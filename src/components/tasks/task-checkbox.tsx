@@ -64,7 +64,7 @@ export function TaskCheckbox({
       onCheckedChange={(value) => onCheckedChange(value === true)}
       aria-label={t("markDone")}
       // Enlarged hit area: the control is 20px but the tap target is 44px.
-      className="size-5 shrink-0 before:absolute before:-inset-3 before:content-['']"
+      className="relative size-5 shrink-0 before:absolute before:-inset-3 before:content-['']"
     />
   );
 }
