@@ -5,6 +5,7 @@ import { getInvitePreview } from "@/lib/queries/invites";
 import { Button } from "@/components/ui/button";
 import { GoogleIcon } from "@/components/google-icon";
 import { JoinButton } from "@/components/garden/join-button";
+import { localizedPath } from "@/i18n/paths";
 
 export default async function JoinPage({
   params,
@@ -43,7 +44,7 @@ export default async function JoinPage({
         <form
           action={async () => {
             "use server";
-            await signIn("google", { redirectTo: `/join/${token}` });
+            await signIn("google", { redirectTo: localizedPath(locale, `/join/${token}`) });
           }}
         >
           <Button type="submit" size="touch" className="min-w-56">

@@ -4,6 +4,7 @@ import { Sprout } from "lucide-react";
 import { auth, signIn } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { GoogleIcon } from "@/components/google-icon";
+import { localizedPath } from "@/i18n/paths";
 
 export default async function SignInPage({
   params,
@@ -16,7 +17,7 @@ export default async function SignInPage({
   setRequestLocale(locale);
 
   const session = await auth();
-  if (session?.user) redirect("/");
+  if (session?.user) redirect(localizedPath(locale, "/"));
 
   const { callbackUrl } = await searchParams;
   const t = await getTranslations("auth");
@@ -34,7 +35,9 @@ export default async function SignInPage({
       <form
         action={async () => {
           "use server";
-          await signIn("google", { redirectTo: callbackUrl || "/" });
+          // callbackUrl arrives locale-free from the proxy; re-prefix it so an
+          // English viewer lands back on the English route.
+          await signIn("google", { redirectTo: localizedPath(locale, callbackUrl || "/") });
         }}
       >
         <Button type="submit" size="touch" className="w-full min-w-64">

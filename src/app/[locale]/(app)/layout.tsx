@@ -3,6 +3,7 @@ import { setRequestLocale } from "next-intl/server";
 import { auth } from "@/lib/auth";
 import { getActiveGarden, listGardensForUser } from "@/lib/gardens";
 import { AppShell } from "@/components/shell/app-shell";
+import { localizedPath } from "@/i18n/paths";
 
 export default async function AppLayout({
   children,
@@ -15,7 +16,7 @@ export default async function AppLayout({
   setRequestLocale(locale);
 
   const session = await auth();
-  if (!session?.user?.id) redirect("/sign-in");
+  if (!session?.user?.id) redirect(localizedPath(locale, "/sign-in"));
 
   const [gardens, activeGarden] = await Promise.all([
     listGardensForUser(session.user.id),

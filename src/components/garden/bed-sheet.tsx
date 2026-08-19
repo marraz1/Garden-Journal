@@ -3,8 +3,8 @@
 import { useState, useTransition } from "react";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
-import { Pencil, Plus, Sun, Trash2 } from "lucide-react";
-import { useRouter } from "@/i18n/navigation";
+import { ArrowRight, Pencil, Plus, Sun, Trash2 } from "lucide-react";
+import { Link, useRouter } from "@/i18n/navigation";
 import { deleteBed } from "@/actions/beds";
 import { deletePlant, updatePlantStatus } from "@/actions/plants";
 import { Badge } from "@/components/ui/badge";
@@ -167,6 +167,13 @@ export function BedSheet({
                 </ul>
               )}
             </section>
+
+            <Button asChild variant="outline" size="touch" className="self-start">
+              <Link href={`/beds/${bed.id}`}>
+                <ArrowRight className="size-4" aria-hidden />
+                {t("openBed")}
+              </Link>
+            </Button>
 
             {canEdit && (
               <div className="flex flex-wrap gap-2">

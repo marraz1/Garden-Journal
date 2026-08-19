@@ -8,17 +8,24 @@ const handleI18n = createMiddleware(routing);
 // Routes reachable without a session. Everything else redirects to sign-in.
 const PUBLIC_PATHS = ["/sign-in", "/join"];
 
-function isPublic(pathname: string): boolean {
-  // Strip the optional locale prefix before matching.
-  const withoutLocale = pathname.replace(/^\/(?:lt|en)(?=\/|$)/, "") || "/";
-  return PUBLIC_PATHS.some((p) => withoutLocale === p || withoutLocale.startsWith(`${p}/`));
+const LOCALE_PREFIX = new RegExp(`^/(?:${routing.locales.join("|")})(?=/|$)`);
+
+/** Splits `/en/plan` into its locale prefix and the locale-free path. */
+function splitLocale(pathname: string): { prefix: string; path: string } {
+  const match = pathname.match(LOCALE_PREFIX);
+  const prefix = match?.[0] ?? "";
+  return { prefix, path: pathname.slice(prefix.length) || "/" };
+}
+
+function isPublic(path: string): boolean {
+  return PUBLIC_PATHS.some((p) => path === p || path.startsWith(`${p}/`));
 }
 
 export function proxy(request: NextRequest) {
   const response = handleI18n(request);
 
-  const { pathname } = request.nextUrl;
-  if (isPublic(pathname)) return response;
+  const { prefix, path } = splitLocale(request.nextUrl.pathname);
+  if (isPublic(path)) return response;
 
   // Optimistic session check only — every server action and loader re-checks
   // the real session and garden membership via src/lib/guards.ts.
@@ -27,8 +34,10 @@ export function proxy(request: NextRequest) {
     request.cookies.has("__Secure-authjs.session-token");
 
   if (!hasSession) {
-    const signInUrl = new URL("/sign-in", request.url);
-    signInUrl.searchParams.set("callbackUrl", pathname);
+    // Keep the viewer's locale, and hand back a locale-free callback path so
+    // next-intl's Link/redirect helpers can re-prefix it after signing in.
+    const signInUrl = new URL(`${prefix}/sign-in`, request.url);
+    signInUrl.searchParams.set("callbackUrl", path);
     return NextResponse.redirect(signInUrl);
   }
 
