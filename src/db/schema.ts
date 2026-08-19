@@ -210,7 +210,11 @@ export const plantCatalog = pgTable(
     careNotesLt: text("care_notes_lt"),
     careNotesEn: text("care_notes_en"),
   },
-  (t) => [index("plant_catalog_family_idx").on(t.family)],
+  (t) => [
+    index("plant_catalog_family_idx").on(t.family),
+    // Lets `npm run db:seed` upsert rather than duplicate on every run.
+    uniqueIndex("plant_catalog_name_lt_idx").on(t.nameLt),
+  ],
 );
 
 export const plants = pgTable(
