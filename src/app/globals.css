@@ -186,14 +186,14 @@
   }
 
   body {
-    @apply bg-background text-foreground text-base;
+    @apply bg-background text-base text-foreground;
     /* Room for the fixed bottom navigation on mobile. */
     padding-bottom: env(safe-area-inset-bottom);
   }
 
   /* Always-visible focus ring — accessibility requirement from the design spec. */
   :focus-visible {
-    @apply ring-ring/70 outline-none ring-2 ring-offset-2 ring-offset-background;
+    @apply ring-2 ring-ring/70 ring-offset-2 ring-offset-background outline-none;
   }
 
   @media (prefers-reduced-motion: reduce) {

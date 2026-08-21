@@ -18,7 +18,11 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          # Node 24 (npm 11) matches local dev and the Vercel runtime. The
+          # lockfile is written by npm 11; npm 10 — bundled with Node 22 —
+          # rejects it as out of sync. Do not lower this without regenerating
+          # package-lock.json with the matching npm.
+          node-version: 24
           cache: npm
 
       - run: npm ci
