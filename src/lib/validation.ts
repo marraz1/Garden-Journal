@@ -5,6 +5,37 @@ import { z } from "zod";
 const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "invalidDate");
 const trimmed = (max: number) => z.string().trim().min(1, "required").max(max, "tooLong");
 
+/* Authentication -------------------------------------------------------- */
+
+const email = z
+  .string()
+  .trim()
+  .toLowerCase()
+  .min(1, "required")
+  .max(254, "tooLong")
+  .pipe(z.email("invalidEmail"));
+
+// Strength is checked separately by checkPasswordStrength so the reason can be
+// reported precisely; here we only bound the length.
+const password = z.string().min(1, "required").max(200, "passwordTooLong");
+
+export const signUpSchema = z.object({
+  name: z.string().trim().max(80, "tooLong").optional().or(z.literal("")),
+  email,
+  password,
+});
+
+export const signInSchema = z.object({ email, password });
+
+export const forgotPasswordSchema = z.object({ email });
+
+export const resetPasswordSchema = z.object({
+  token: z.string().min(1, "required").max(200),
+  password,
+});
+
+/* Gardens --------------------------------------------------------------- */
+
 export const gardenSchema = z.object({
   name: trimmed(80),
   location: z.string().trim().max(120).optional().or(z.literal("")),

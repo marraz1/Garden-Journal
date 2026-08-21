@@ -40,9 +40,34 @@
   "auth": {
     "signInTitle": "Sign in to Garden Journal",
     "signInSubtitle": "Plan your beds, keep on top of the work, record the harvest.",
+    "signUpTitle": "Create an account",
+    "signUpSubtitle": "Free. An email address is all you need.",
     "signInWithGoogle": "Sign in with Google",
+    "orContinueWith": "or",
     "signOut": "Sign out",
-    "signedInAs": "Signed in as {name}"
+    "signedInAs": "Signed in as {name}",
+    "name": "Name",
+    "email": "Email",
+    "password": "Password",
+    "newPassword": "New password",
+    "showPassword": "Show password",
+    "hidePassword": "Hide password",
+    "signIn": "Sign in",
+    "signUp": "Sign up",
+    "noAccount": "No account yet?",
+    "haveAccount": "Already have an account?",
+    "forgotPassword": "Forgot your password?",
+    "forgotTitle": "Reset your password",
+    "forgotSubtitle": "Enter your email and we will send you a link to set a new password.",
+    "sendResetLink": "Send link",
+    "resetSentTitle": "Check your email",
+    "resetSentBody": "If an account exists for that address, we have sent a link to reset the password. It is valid for 1 hour.",
+    "resetTitle": "New password",
+    "resetSubtitle": "Choose a new password for your account.",
+    "resetSubmit": "Save password",
+    "resetDone": "Password changed. You can sign in now.",
+    "passwordHint": "At least {min} characters.",
+    "backToSignIn": "Back to sign in"
   },
   "dashboard": {
     "title": "Home",
@@ -226,6 +251,13 @@
     "required": "This field is required",
     "tooLong": "Text is too long",
     "invalidDate": "Invalid date",
-    "uploadFailed": "Photo upload failed"
+    "uploadFailed": "Photo upload failed",
+    "invalidEmail": "That does not look like an email address",
+    "emailTaken": "An account with this email already exists",
+    "invalidCredentials": "Wrong email or password",
+    "passwordTooShort": "Password is too short",
+    "passwordTooLong": "Password is too long",
+    "passwordTooWeak": "Password is too weak",
+    "resetLinkInvalid": "This link is invalid or has expired"
   }
 }

@@ -13,7 +13,7 @@ journalling progress with photos. Requirements (in Lithuanian) live in
 | Framework | Next.js 16 (App Router, Turbopack, React 19) |
 | Language | TypeScript, strict |
 | DB | Neon serverless Postgres + Drizzle ORM |
-| Auth | Auth.js v5, Google OAuth only, database sessions |
+| Auth | Auth.js v5 — email/password (bcrypt) with JWT sessions; Google optional |
 | i18n | next-intl — `lt` is the default (unprefixed), `en` is prefixed |
 | UI | Tailwind v4 + shadcn/ui (radix-nova preset) + Lucide |
 | Forms | Server Actions + Zod (`src/lib/validation.ts`) |
@@ -38,6 +38,17 @@ journalling progress with photos. Requirements (in Lithuanian) live in
 - **Recurring tasks** are not expanded up front. The rule sits on the task row
   and completing an occurrence materialises the next one — see
   `src/lib/recurrence.ts` and `completeTask` in `src/actions/tasks.ts`.
+- **Authentication**: email and password via the Auth.js Credentials provider.
+  That provider cannot use database sessions, so the strategy is JWT and the
+  `session` table sits unused (the adapter still needs it for OAuth). Google is
+  added only when `AUTH_GOOGLE_ID`/`AUTH_GOOGLE_SECRET` are set — see
+  `googleEnabled` in `src/lib/auth.ts` — so the sign-in page never offers a
+  method that is not configured.
+- **Password rules**: hashing and reset-token handling live in
+  `src/lib/passwords.ts`. Reset tokens are stored only as a SHA-256 hash;
+  the raw token exists solely in the email. Sign-in and forgot-password must
+  never reveal whether an address is registered — `authorize()` burns matching
+  time on a miss, and `requestPasswordReset` always reports success.
 - **Middleware is `src/proxy.ts`** (Next.js 16 renamed the convention). It does
   locale routing plus an optimistic cookie check only; real authorisation
   happens in the guards.

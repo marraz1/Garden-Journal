@@ -40,9 +40,34 @@
   "auth": {
     "signInTitle": "Prisijunkite prie sodo žurnalo",
     "signInSubtitle": "Planuokite lysves, sekite darbus ir fiksuokite derlių.",
+    "signUpTitle": "Sukurkite paskyrą",
+    "signUpSubtitle": "Nemokamai. Užtenka el. pašto adreso.",
     "signInWithGoogle": "Prisijungti su Google",
+    "orContinueWith": "arba",
     "signOut": "Atsijungti",
-    "signedInAs": "Prisijungta kaip {name}"
+    "signedInAs": "Prisijungta kaip {name}",
+    "name": "Vardas",
+    "email": "El. paštas",
+    "password": "Slaptažodis",
+    "newPassword": "Naujas slaptažodis",
+    "showPassword": "Rodyti slaptažodį",
+    "hidePassword": "Slėpti slaptažodį",
+    "signIn": "Prisijungti",
+    "signUp": "Registruotis",
+    "noAccount": "Neturite paskyros?",
+    "haveAccount": "Jau turite paskyrą?",
+    "forgotPassword": "Pamiršote slaptažodį?",
+    "forgotTitle": "Slaptažodžio priminimas",
+    "forgotSubtitle": "Įveskite el. paštą — atsiųsime nuorodą slaptažodžiui pakeisti.",
+    "sendResetLink": "Siųsti nuorodą",
+    "resetSentTitle": "Patikrinkite el. paštą",
+    "resetSentBody": "Jei paskyra su šiuo adresu egzistuoja, išsiuntėme nuorodą slaptažodžiui pakeisti. Nuoroda galioja 1 valandą.",
+    "resetTitle": "Naujas slaptažodis",
+    "resetSubtitle": "Pasirinkite naują slaptažodį savo paskyrai.",
+    "resetSubmit": "Išsaugoti slaptažodį",
+    "resetDone": "Slaptažodis pakeistas. Galite prisijungti.",
+    "passwordHint": "Bent {min} simbolių.",
+    "backToSignIn": "Grįžti į prisijungimą"
   },
   "dashboard": {
     "title": "Pradžia",
@@ -226,6 +251,13 @@
     "required": "Privalomas laukas",
     "tooLong": "Per ilgas tekstas",
     "invalidDate": "Neteisinga data",
-    "uploadFailed": "Nepavyko įkelti nuotraukos"
+    "uploadFailed": "Nepavyko įkelti nuotraukos",
+    "invalidEmail": "Neteisingas el. pašto adresas",
+    "emailTaken": "Paskyra su šiuo el. paštu jau yra",
+    "invalidCredentials": "Neteisingas el. paštas arba slaptažodis",
+    "passwordTooShort": "Slaptažodis per trumpas",
+    "passwordTooLong": "Slaptažodis per ilgas",
+    "passwordTooWeak": "Slaptažodis per silpnas",
+    "resetLinkInvalid": "Nuoroda negalioja arba baigėsi jos galiojimas"
   }
 }

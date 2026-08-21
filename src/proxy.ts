@@ -6,7 +6,7 @@ import { routing } from "@/i18n/routing";
 const handleI18n = createMiddleware(routing);
 
 // Routes reachable without a session. Everything else redirects to sign-in.
-const PUBLIC_PATHS = ["/sign-in", "/join"];
+const PUBLIC_PATHS = ["/sign-in", "/sign-up", "/forgot-password", "/reset-password", "/join"];
 
 const LOCALE_PREFIX = new RegExp(`^/(?:${routing.locales.join("|")})(?=/|$)`);
 

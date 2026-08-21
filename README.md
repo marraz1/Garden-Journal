@@ -16,12 +16,14 @@ Requirements documents (Lithuanian): [app_requirements/](app_requirements/).
   and optional harvest/height measurements
 - **Sharing** — invite a household or community garden by link, with
   owner / editor / viewer roles
+- **Accounts** — email and password sign-up, sign-in and a forgot-password
+  flow; Google sign-in appears only if you configure it
 - Dark mode, installable to the home screen, WCAG-AA contrast, 44px touch targets
 
 ## Stack
 
 Next.js 16 (App Router) · TypeScript · Tailwind v4 + shadcn/ui · Drizzle ORM on
-Neon Postgres · Auth.js v5 (Google) · next-intl · Vercel Blob · Vitest
+Neon Postgres · Auth.js v5 (email + password) · next-intl · Vercel Blob · Vitest
 
 ## Getting started
 
@@ -39,7 +41,8 @@ npm run dev
 |---|---|
 | `DATABASE_URL` | Neon → project → pooled connection string (use a **dev branch** locally) |
 | `AUTH_SECRET` | `npx auth secret` |
-| `AUTH_GOOGLE_ID` / `AUTH_GOOGLE_SECRET` | Google Cloud → Credentials → OAuth client (Web). Redirect URI: `http://localhost:3000/api/auth/callback/google` |
+| `AUTH_GOOGLE_ID` / `AUTH_GOOGLE_SECRET` | **Optional.** Google Cloud → Credentials → OAuth client (Web). Redirect URI: `http://localhost:3000/api/auth/callback/google`. Omit them and the Google button is hidden |
+| `RESEND_API_KEY` / `EMAIL_FROM` | **Optional locally.** Sends password-reset emails. Without a key the reset link is logged to the server console instead |
 | `BLOB_READ_WRITE_TOKEN` | Vercel project → Storage → Blob |
 | `NEXT_PUBLIC_APP_URL` | `http://localhost:3000` locally; the deployment URL in production |
 

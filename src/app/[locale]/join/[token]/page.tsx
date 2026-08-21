@@ -1,11 +1,10 @@
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { Sprout } from "lucide-react";
-import { auth, signIn } from "@/lib/auth";
+import { auth } from "@/lib/auth";
 import { getInvitePreview } from "@/lib/queries/invites";
 import { Button } from "@/components/ui/button";
-import { GoogleIcon } from "@/components/google-icon";
 import { JoinButton } from "@/components/garden/join-button";
-import { localizedPath } from "@/i18n/paths";
+import { Link } from "@/i18n/navigation";
 
 export default async function JoinPage({
   params,
@@ -41,17 +40,20 @@ export default async function JoinPage({
       {session?.user ? (
         <JoinButton token={token} />
       ) : (
-        <form
-          action={async () => {
-            "use server";
-            await signIn("google", { redirectTo: localizedPath(locale, `/join/${token}`) });
-          }}
-        >
-          <Button type="submit" size="touch" className="min-w-56">
-            <GoogleIcon className="size-5" />
-            {tAuth("signInWithGoogle")}
+        // Not signed in: send them through the normal sign-in flow and back
+        // here afterwards, so an invitee can also create an account first.
+        <div className="flex w-full max-w-56 flex-col gap-2">
+          <Button asChild size="touch">
+            <Link href={{ pathname: "/sign-in", query: { callbackUrl: `/join/${token}` } }}>
+              {tAuth("signIn")}
+            </Link>
           </Button>
-        </form>
+          <Button asChild variant="outline" size="touch">
+            <Link href={{ pathname: "/sign-up", query: { callbackUrl: `/join/${token}` } }}>
+              {tAuth("signUp")}
+            </Link>
+          </Button>
+        </div>
       )}
     </Shell>
   );

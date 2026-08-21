@@ -28,10 +28,36 @@ export const users = pgTable("user", {
   email: text("email").unique(),
   emailVerified: timestamp("emailVerified", { mode: "date" }),
   image: text("image"),
+  // Null for accounts created through an OAuth provider — those users have no
+  // password to check. Never selected into anything the client can see.
+  passwordHash: text("password_hash"),
   // Preferred UI locale, remembered across devices.
   locale: text("locale"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
+
+/**
+ * Password reset links. Only a SHA-256 hash of the token is stored, so a leaked
+ * database snapshot cannot be used to take over accounts; the raw token exists
+ * only in the email that was sent.
+ */
+export const passwordResetTokens = pgTable(
+  "password_reset_token",
+  {
+    id: id(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    tokenHash: text("token_hash").notNull(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    usedAt: timestamp("used_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("password_reset_token_hash_idx").on(t.tokenHash),
+    index("password_reset_token_user_idx").on(t.userId),
+  ],
+);
 
 export const accounts = pgTable(
   "account",
@@ -340,3 +366,5 @@ export type ProgressPhoto = typeof progressPhotos.$inferSelect;
 export type MemberRole = (typeof memberRole.enumValues)[number];
 export type PlantFamily = (typeof plantFamily.enumValues)[number];
 export type TaskType = (typeof taskType.enumValues)[number];
+
+export type PasswordResetToken = typeof passwordResetTokens.$inferSelect;
