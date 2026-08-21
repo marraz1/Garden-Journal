@@ -1,0 +1,7 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": "nextjs",
+  "installCommand": "npm ci",
+  "buildCommand": "if [ \"$VERCEL_ENV\" = production ]; then npm run db:migrate; fi && next build",
+  "regions": ["fra1"]
+}
