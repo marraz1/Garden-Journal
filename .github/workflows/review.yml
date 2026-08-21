@@ -1,0 +1,45 @@
+name: PR Review
+
+# Surfaces lint and type problems as inline comments on the pull request.
+# Semantic review stays with human reviewers — see REVIEW.md.
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+
+permissions:
+  contents: read
+  pull-requests: write
+  checks: write
+
+concurrency:
+  group: review-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  eslint-review:
+    runs-on: ubuntu-latest
+    steps:
+      # Third-party actions are pinned to commit SHAs rather than tags: this job
+      # is granted pull-requests: write, and a tag can be repointed at any time.
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      # Type errors are not visible to ESLint, so report them here too.
+      - name: Typecheck
+        run: npm run typecheck
+
+      # NOTE: pull requests opened from a fork receive a read-only GITHUB_TOKEN,
+      # so reviewdog cannot post comments there and silently reports nothing.
+      # Findings still appear in this job's log.
+      - uses: reviewdog/action-eslint@556a3fdaf8b4201d4d74d406013386aa4f7dab96 # v1
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          reporter: github-pr-review
+          eslint_flags: "."
+          fail_level: error
