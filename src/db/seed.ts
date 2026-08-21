@@ -4,9 +4,9 @@
  *
  * Idempotent: run `npm run db:seed` as often as you like.
  */
-import { config } from "dotenv";
-config({ path: ".env.local" });
-
+// Env comes from `node --env-file-if-exists=.env.local` in the db:seed script.
+// Loading it here would be too late: ESM evaluates imports before statements,
+// so ./index would build its connection pool against an empty DATABASE_URL.
 import { db } from "./index";
 import { plantCatalog } from "./schema";
 
