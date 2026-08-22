@@ -1,5 +1,5 @@
 import "server-only";
-import { and, asc, eq, ne } from "drizzle-orm";
+import { and, asc, eq, isNotNull, isNull, ne } from "drizzle-orm";
 import { db } from "@/db";
 import { beds, plantCatalog, plants, type PlantFamily } from "@/db/schema";
 
@@ -42,9 +42,12 @@ export async function listBedsWithPlants(
         family: plantCatalog.family,
       })
       .from(plants)
-      .innerJoin(beds, eq(beds.id, plants.bedId))
       .leftJoin(plantCatalog, eq(plantCatalog.id, plants.catalogId))
-      .where(and(eq(beds.gardenId, gardenId), ne(plants.status, "removed")))
+      // Scoped by the plant's own garden column, not by a join through `bed`:
+      // a free-standing plant has no bed and an inner join would hide it.
+      .where(
+        and(eq(plants.gardenId, gardenId), isNotNull(plants.bedId), ne(plants.status, "removed")),
+      )
       .orderBy(asc(plants.createdAt)),
   ]);
 
@@ -86,4 +89,55 @@ function dominantFamily(families: PlantFamily[]): PlantFamily {
 export async function getBed(bedId: string) {
   const [bed] = await db.select().from(beds).where(eq(beds.id, bedId)).limit(1);
   return bed ?? null;
+}
+
+/** A plant standing directly on the plan, outside any bed. */
+export interface PlacedPlant {
+  id: string;
+  name: string;
+  variety: string | null;
+  status: string;
+  family: PlantFamily;
+  spacingCm: number | null;
+  gridX: number;
+  gridY: number;
+  gridW: number;
+  gridH: number;
+}
+
+export async function listPlacedPlants(gardenId: string, locale: string): Promise<PlacedPlant[]> {
+  const catalogName = locale === "en" ? plantCatalog.nameEn : plantCatalog.nameLt;
+
+  const rows = await db
+    .select({
+      id: plants.id,
+      catalogName,
+      freeformName: plants.freeformName,
+      variety: plants.variety,
+      status: plants.status,
+      family: plantCatalog.family,
+      spacingCm: plantCatalog.spacingCm,
+      gridX: plants.gridX,
+      gridY: plants.gridY,
+      gridW: plants.gridW,
+      gridH: plants.gridH,
+    })
+    .from(plants)
+    .leftJoin(plantCatalog, eq(plantCatalog.id, plants.catalogId))
+    .where(and(eq(plants.gardenId, gardenId), isNull(plants.bedId), ne(plants.status, "removed")))
+    .orderBy(asc(plants.createdAt));
+
+  return rows.map((row) => ({
+    id: row.id,
+    name: row.catalogName ?? row.freeformName ?? "",
+    variety: row.variety,
+    status: row.status,
+    family: (row.family ?? "other") as PlantFamily,
+    spacingCm: row.spacingCm,
+    // The check constraint guarantees these are set when there is no bed.
+    gridX: row.gridX ?? 0,
+    gridY: row.gridY ?? 0,
+    gridW: row.gridW,
+    gridH: row.gridH,
+  }));
 }

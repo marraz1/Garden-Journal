@@ -22,10 +22,12 @@ import type { PlantFamily } from "@/db/schema";
 import { todayInAppZone } from "@/lib/dates";
 
 export function AddPlantDialog({
+  gardenId,
   bedId,
   open,
   onOpenChange,
 }: {
+  gardenId: string;
   bedId: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -65,6 +67,7 @@ export function AddPlantDialog({
 
   function submit(mode: "catalog" | "freeform") {
     const payload = {
+      gardenId,
       bedId,
       catalogId: mode === "catalog" ? selected?.id : null,
       freeformName: mode === "freeform" ? freeformName : "",

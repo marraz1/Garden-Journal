@@ -23,7 +23,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { FAMILY_COLOR_VAR, FAMILY_MESSAGE_KEY, PLANT_FAMILIES } from "@/lib/plant-families";
+import { FamilySelect } from "@/components/plants/family-select";
 import type { PlantFamily } from "@/db/schema";
 import type { BedWithPlants } from "@/lib/queries/beds";
 
@@ -42,7 +42,6 @@ export function BedFormDialog({
 }) {
   const t = useTranslations("beds");
   const tc = useTranslations("common");
-  const tPlants = useTranslations("plants");
   const tErr = useTranslations("errors");
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -119,30 +118,14 @@ export function BedFormDialog({
           </div>
 
           <div className="flex flex-col gap-2">
-            <Label>{t("color")}</Label>
-            <Select
+            <Label htmlFor="bed-color">{t("color")}</Label>
+            {/* "auto" means the dominant plant family decides. */}
+            <FamilySelect
+              id="bed-color"
               value={color}
-              onValueChange={(value) => setColor(value as PlantFamily | "auto")}
-            >
-              <SelectTrigger className="h-11">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {/* "auto" means the dominant plant family decides. */}
-                <SelectItem value="auto">{tc("none")}</SelectItem>
-                {PLANT_FAMILIES.map((family) => (
-                  <SelectItem key={family} value={family}>
-                    <span className="flex items-center gap-2">
-                      <span
-                        className="size-3 rounded-full"
-                        style={{ backgroundColor: FAMILY_COLOR_VAR[family] }}
-                      />
-                      {tPlants(FAMILY_MESSAGE_KEY[family] as "familyOther")}
-                    </span>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+              onValueChange={setColor}
+              extraOption={{ value: "auto", label: tc("none") }}
+            />
           </div>
 
           <div className="flex flex-col gap-2">

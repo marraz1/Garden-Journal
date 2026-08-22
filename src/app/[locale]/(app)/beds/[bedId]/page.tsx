@@ -7,6 +7,7 @@ import { requireGardenAccess } from "@/lib/guards";
 import { getBed } from "@/lib/queries/beds";
 import { getBedDetail } from "@/lib/queries/bed-detail";
 import { FAMILY_COLOR_VAR, FAMILY_MESSAGE_KEY } from "@/lib/plant-families";
+import { cellsToArea } from "@/lib/plan-geometry";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -69,7 +70,11 @@ export default async function BedPage({
 
         <p className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
           <span>
-            {detail.bed.gridW} × {detail.bed.gridH}
+            {t("dimensions", {
+              w: detail.bed.gridW,
+              h: detail.bed.gridH,
+              area: cellsToArea(detail.bed.gridW, detail.bed.gridH),
+            })}
           </span>
           {sunLabel && (
             <span className="flex items-center gap-1">

@@ -3,7 +3,7 @@ import { getTranslations, setRequestLocale } from "next-intl/server";
 import { getActiveGarden } from "@/lib/gardens";
 import { requireGardenAccess } from "@/lib/guards";
 import { getGarden } from "@/lib/queries/members";
-import { listBedsWithPlants } from "@/lib/queries/beds";
+import { listBedsWithPlants, listPlacedPlants } from "@/lib/queries/beds";
 import { can } from "@/lib/permissions";
 import { PlanEditor } from "@/components/garden/plan-editor";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -26,9 +26,10 @@ export default async function PlanPage({ params }: { params: Promise<{ locale: s
 
 async function Plan({ gardenId, locale }: { gardenId: string; locale: string }) {
   const { role } = await requireGardenAccess(gardenId, "view");
-  const [garden, beds] = await Promise.all([
+  const [garden, beds, plants] = await Promise.all([
     getGarden(gardenId),
     listBedsWithPlants(gardenId, locale),
+    listPlacedPlants(gardenId, locale),
   ]);
   if (!garden) return null;
 
@@ -38,7 +39,9 @@ async function Plan({ gardenId, locale }: { gardenId: string; locale: string }) 
       cols={garden.gridCols}
       rows={garden.gridRows}
       beds={beds}
+      plants={plants}
       canEdit={can(role, "editContent")}
+      canManage={can(role, "manageGarden")}
     />
   );
 }

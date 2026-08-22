@@ -8,6 +8,7 @@ import { createGarden, updateGarden } from "@/actions/gardens";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { MAX_GRID, MIN_GRID, cellsToArea } from "@/lib/plan-geometry";
 
 interface GardenFormProps {
   gardenId?: string;
@@ -27,6 +28,9 @@ export function GardenForm({ gardenId, defaults }: GardenFormProps) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [fieldErrors, setFieldErrors] = useState<Record<string, string[]>>({});
+  // Mirrored into state purely so the area readout follows what is typed.
+  const [cols, setCols] = useState(defaults?.gridCols ?? 12);
+  const [rows, setRows] = useState(defaults?.gridRows ?? 12);
 
   function onSubmit(formData: FormData) {
     const input = {
@@ -85,32 +89,43 @@ export function GardenForm({ gardenId, defaults }: GardenFormProps) {
           defaultValue={defaults?.sizeM2 ?? ""}
           className="h-11 text-base"
         />
+        <p className="text-sm text-muted-foreground">{t("sizeM2Hint")}</p>
       </Field>
 
-      <fieldset className="grid grid-cols-2 gap-3">
+      <fieldset className="flex flex-col gap-3">
         <legend className="mb-2 text-sm font-medium">{t("gridSize")}</legend>
-        <Field label={t("gridCols")}>
-          <Input
-            name="gridCols"
-            type="number"
-            inputMode="numeric"
-            min={4}
-            max={30}
-            defaultValue={defaults?.gridCols ?? 12}
-            className="h-11 text-base"
-          />
-        </Field>
-        <Field label={t("gridRows")}>
-          <Input
-            name="gridRows"
-            type="number"
-            inputMode="numeric"
-            min={4}
-            max={30}
-            defaultValue={defaults?.gridRows ?? 12}
-            className="h-11 text-base"
-          />
-        </Field>
+        <div className="grid grid-cols-2 gap-3">
+          <Field label={t("gridCols")}>
+            <Input
+              name="gridCols"
+              type="number"
+              inputMode="numeric"
+              min={MIN_GRID}
+              max={MAX_GRID}
+              defaultValue={defaults?.gridCols ?? 12}
+              onChange={(event) => setCols(Number(event.target.value))}
+              className="h-11 text-base"
+            />
+          </Field>
+          <Field label={t("gridRows")}>
+            <Input
+              name="gridRows"
+              type="number"
+              inputMode="numeric"
+              min={MIN_GRID}
+              max={MAX_GRID}
+              defaultValue={defaults?.gridRows ?? 12}
+              onChange={(event) => setRows(Number(event.target.value))}
+              className="h-11 text-base"
+            />
+          </Field>
+        </div>
+        <p className="text-sm text-muted-foreground">
+          {t("planScaleHint")}
+          {Number.isFinite(cols) && Number.isFinite(rows) && cols > 0 && rows > 0 && (
+            <> · {t("planArea", { cols, rows, area: cellsToArea(cols, rows) })}</>
+          )}
+        </p>
       </fieldset>
 
       <div className="flex gap-3 pt-2">

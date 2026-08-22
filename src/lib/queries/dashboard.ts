@@ -75,11 +75,13 @@ export async function getDashboardData(gardenId: string, locale: string): Promis
           bedName: beds.name,
         })
         .from(plants)
-        .innerJoin(beds, eq(beds.id, plants.bedId))
+        // Left, not inner: a plant standing on the plan has no bed, and an
+        // inner join would drop it from the harvest list entirely.
+        .leftJoin(beds, eq(beds.id, plants.bedId))
         .leftJoin(plantCatalog, eq(plantCatalog.id, plants.catalogId))
         .where(
           and(
-            eq(beds.gardenId, gardenId),
+            eq(plants.gardenId, gardenId),
             ne(plants.status, "removed"),
             isNotNull(plants.expectedHarvestDate),
             gte(plants.expectedHarvestDate, today),
@@ -101,8 +103,7 @@ export async function getDashboardData(gardenId: string, locale: string): Promis
       db
         .select({ value: count() })
         .from(plants)
-        .innerJoin(beds, eq(beds.id, plants.bedId))
-        .where(and(eq(beds.gardenId, gardenId), ne(plants.status, "removed"))),
+        .where(and(eq(plants.gardenId, gardenId), ne(plants.status, "removed"))),
     ]);
 
   return {
