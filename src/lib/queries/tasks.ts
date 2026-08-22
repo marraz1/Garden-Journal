@@ -49,7 +49,7 @@ export async function listTasks(gardenId: string): Promise<TaskRow[]> {
 
 export interface TaskTargets {
   beds: { id: string; name: string }[];
-  plants: { id: string; bedId: string; name: string }[];
+  plants: { id: string; bedId: string | null; name: string }[];
 }
 
 /** Beds and plants offered as optional links on the task form. */
@@ -71,9 +71,9 @@ export async function listTaskTargets(gardenId: string, locale: string): Promise
         freeformName: plants.freeformName,
       })
       .from(plants)
-      .innerJoin(beds, eq(beds.id, plants.bedId))
       .leftJoin(plantCatalog, eq(plantCatalog.id, plants.catalogId))
-      .where(and(eq(beds.gardenId, gardenId), ne(plants.status, "removed"))),
+      // Scoped by the plant's garden so free-standing plants stay linkable.
+      .where(and(eq(plants.gardenId, gardenId), ne(plants.status, "removed"))),
   ]);
 
   return {

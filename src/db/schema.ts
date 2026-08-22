@@ -1,5 +1,7 @@
+import { sql } from "drizzle-orm";
 import {
   boolean,
+  check,
   date,
   index,
   integer,
@@ -141,8 +143,12 @@ export const gardens = pgTable(
       .references(() => users.id, { onDelete: "cascade" }),
     name: text("name").notNull(),
     location: text("location"),
+    // The real plot area, as the gardener states it — paths, house and lawn
+    // included. The *plan* area is derived from the grid below and the two
+    // legitimately differ, so never overwrite one from the other.
     sizeM2: integer("size_m2"),
-    // Plan editor canvas size, in grid cells.
+    // Plan editor canvas size, in grid cells. One cell is one square metre,
+    // so these are also the plan's width and height in metres.
     gridCols: integer("grid_cols").notNull().default(12),
     gridRows: integer("grid_rows").notNull().default(12),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
@@ -235,11 +241,23 @@ export const plantCatalog = pgTable(
     harvestToMonth: integer("harvest_to_month"),
     careNotesLt: text("care_notes_lt"),
     careNotesEn: text("care_notes_en"),
+    // Null for the shared, seeded Lithuanian catalog. Set when a gardener adds
+    // a plant the seed list does not cover — those stay private to them.
+    createdByUserId: text("created_by_user_id").references(() => users.id, {
+      onDelete: "cascade",
+    }),
   },
   (t) => [
     index("plant_catalog_family_idx").on(t.family),
-    // Lets `npm run db:seed` upsert rather than duplicate on every run.
-    uniqueIndex("plant_catalog_name_lt_idx").on(t.nameLt),
+    // Partial, so it constrains only the seeded rows: `npm run db:seed` still
+    // upserts rather than duplicating, while a gardener stays free to name
+    // their own entry "Pomidorai".
+    uniqueIndex("plant_catalog_name_lt_idx")
+      .on(t.nameLt)
+      .where(sql`${t.createdByUserId} is null`),
+    // One gardener cannot end up with two entries of the same name. Postgres
+    // treats NULLs as distinct, so the seeded rows are unaffected.
+    uniqueIndex("plant_catalog_owner_name_idx").on(t.createdByUserId, t.nameLt),
   ],
 );
 
@@ -247,9 +265,15 @@ export const plants = pgTable(
   "plant",
   {
     id: id(),
-    bedId: text("bed_id")
+    // Denormalised deliberately: a plant standing on bare ground has no bed to
+    // resolve its garden through, and every access guard needs a garden id.
+    // Beds never move between gardens, so this cannot drift.
+    gardenId: text("garden_id")
       .notNull()
-      .references(() => beds.id, { onDelete: "cascade" }),
+      .references(() => gardens.id, { onDelete: "cascade" }),
+    // Null when the plant stands directly on the plan rather than in a bed.
+    // Still cascades, so deleting a bed removes its plants as the UI promises.
+    bedId: text("bed_id").references(() => beds.id, { onDelete: "cascade" }),
     catalogId: text("catalog_id").references(() => plantCatalog.id, { onDelete: "set null" }),
     // Used when the plant is not in the catalog.
     freeformName: text("freeform_name"),
@@ -258,9 +282,23 @@ export const plants = pgTable(
     plantedDate: date("planted_date"),
     expectedHarvestDate: date("expected_harvest_date"),
     status: plantStatus("status").notNull().default("planned"),
+    // Position on the plan canvas, set only for free-standing plants.
+    gridX: integer("grid_x"),
+    gridY: integer("grid_y"),
+    gridW: integer("grid_w").notNull().default(1),
+    gridH: integer("grid_h").notNull().default(1),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [index("plant_bed_idx").on(t.bedId), index("plant_harvest_idx").on(t.expectedHarvestDate)],
+  (t) => [
+    index("plant_bed_idx").on(t.bedId),
+    index("plant_garden_idx").on(t.gardenId),
+    index("plant_harvest_idx").on(t.expectedHarvestDate),
+    // A plant lives in a bed or at a spot on the plan — never nowhere.
+    check(
+      "plant_placement_check",
+      sql`${t.bedId} is not null or (${t.gridX} is not null and ${t.gridY} is not null)`,
+    ),
+  ],
 );
 
 /* -------------------------------------------------------------------------- */

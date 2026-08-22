@@ -43,11 +43,13 @@ Garden (Sodas/Sklypas)
 Bed / Zone (Lysvė/Zona)
   - id, gardenId, name, shape (JSON: coords/grid position), sunExposure, soilType
 
-Plant (Augalas egzempliorius lysvėje)
-  - id, bedId, species, variety, plantedDate, expectedHarvestDate, status (planuota/pasodinta/derlius/pašalinta)
+Plant (Augalas egzempliorius lysvėje arba tiesiai plane)
+  - id, gardenId, bedId?, species, variety, plantedDate, expectedHarvestDate, status (planuota/pasodinta/derlius/pašalinta)
+  - bedId? — augalas gali stovėti ir tiesiai plane (pvz. vaismedis); tada saugoma jo vieta tinklelyje (gridX/gridY/gridW/gridH)
 
-PlantCatalog (žinynas, opcionaliai seed'inamas)
+PlantCatalog (žinynas, seed'inamas; naudotojas gali papildyti savo augalais)
   - id, commonName, latinName, defaultSpacing, daysToMaturity, careNotes
+  - createdByUserId? — tuščias reiškia bendrą katalogą; užpildytas — tik to naudotojo augalą
 
 Task (Darbas)
   - id, gardenId, bedId?, plantId?, title, type (laistymas/tręšimas/sėja/derlius/kita), dueDate, recurrenceRule?, status, completedAt
@@ -102,7 +104,11 @@ ProgressLog (Progreso įrašas)
 ## 7. Kiti atviri klausimai prieš pradedant
 
 1. Ar reikia daugiau nei vieno naudotojo per sodą (šeimos/bendruomenės bendrinimas) jau v1?
-2. Ar planas turi būti tikslus (metrais/koordinatėmis), ar užtenka apytikslio grid vaizdavimo?
+2. Ar planas turi būti tikslus (metrais/koordinatėmis), ar užtenka apytikslio grid
+   vaizdavimo?
+   **Atsakyta: planas metrinis — vienas plano langelis atitinka 1 m².** Tinklelis
+   lieka sąveikos vienetas (ne laisvos formos matmenys), o plano dydis keičiamas
+   pločio ir aukščio laukais, 4–50 m į kraštinę.
 3. Ar reikalingas lietuviškas augalų katalogas su vietinėmis sėjos/derliaus datomis?
 4. Kokia tikslinė naudotojų grupė — asmeninis naudojimas ar planuojama viešai skelbti kitiems?
 

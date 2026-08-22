@@ -6,17 +6,10 @@ import { z } from "zod";
 import { db } from "@/db";
 import { beds, gardens } from "@/db/schema";
 import { requireGardenAccess } from "@/lib/guards";
+import { gardenIdForBed } from "@/lib/queries/ownership";
+import { clampRect } from "@/lib/plan-geometry";
 import { bedPositionSchema, bedSchema } from "@/lib/validation";
 import { fail, ok, withAction, type ActionResult } from "@/lib/action-result";
-
-async function gardenIdForBed(bedId: string): Promise<string | null> {
-  const [row] = await db
-    .select({ gardenId: beds.gardenId })
-    .from(beds)
-    .where(eq(beds.id, bedId))
-    .limit(1);
-  return row?.gardenId ?? null;
-}
 
 export async function createBed(
   gardenId: string,
@@ -39,18 +32,14 @@ export async function createBed(
       .limit(1);
     if (!garden) return fail("notFound");
 
-    const gridW = Math.min(data.gridW, garden.cols);
-    const gridH = Math.min(data.gridH, garden.rows);
+    const placement = clampRect(data, garden.cols, garden.rows);
 
     const [created] = await db
       .insert(beds)
       .values({
         gardenId,
         name: data.name,
-        gridX: Math.min(data.gridX, garden.cols - gridW),
-        gridY: Math.min(data.gridY, garden.rows - gridH),
-        gridW,
-        gridH,
+        ...placement,
         colorKey: data.colorKey ?? null,
         sunExposure: data.sunExposure ?? null,
         soilType: data.soilType || null,
@@ -98,7 +87,7 @@ export async function updateBedPosition(input: unknown): Promise<ActionResult> {
   return withAction(async () => {
     const parsed = bedPositionSchema.safeParse(input);
     if (!parsed.success) return fail("generic");
-    const { id, gridX, gridY, gridW, gridH } = parsed.data;
+    const { id, ...rect } = parsed.data;
 
     const gardenId = await gardenIdForBed(id);
     if (!gardenId) return fail("notFound");
@@ -112,17 +101,9 @@ export async function updateBedPosition(input: unknown): Promise<ActionResult> {
     if (!garden) return fail("notFound");
 
     // Clamp server-side: the client is not the authority on the grid bounds.
-    const width = Math.min(gridW, garden.cols);
-    const height = Math.min(gridH, garden.rows);
-
     await db
       .update(beds)
-      .set({
-        gridX: Math.max(0, Math.min(gridX, garden.cols - width)),
-        gridY: Math.max(0, Math.min(gridY, garden.rows - height)),
-        gridW: width,
-        gridH: height,
-      })
+      .set(clampRect(rect, garden.cols, garden.rows))
       .where(eq(beds.id, id));
 
     revalidatePath("/plan");

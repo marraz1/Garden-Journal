@@ -7,6 +7,7 @@
 // Env comes from `node --env-file-if-exists=.env.local` in the db:seed script.
 // Loading it here would be too late: ESM evaluates imports before statements,
 // so ./index would build its connection pool against an empty DATABASE_URL.
+import { isNull } from "drizzle-orm";
 import { db } from "./index";
 import { plantCatalog } from "./schema";
 
@@ -619,7 +620,14 @@ async function seed() {
     await db
       .insert(plantCatalog)
       .values(entry)
-      .onConflictDoUpdate({ target: plantCatalog.nameLt, set: entry });
+      // The unique index on name_lt is partial, so the conflict target must
+      // carry the same predicate — otherwise the seed can never match a row.
+      // Gardeners' own entries are never touched.
+      .onConflictDoUpdate({
+        target: plantCatalog.nameLt,
+        targetWhere: isNull(plantCatalog.createdByUserId),
+        set: entry,
+      });
   }
 
   console.log("Done.");

@@ -15,6 +15,13 @@
       "when": 1787292726723,
       "tag": "0001_add_password_auth",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1787385625121,
+      "tag": "0002_plan_metric_and_free_plants",
+      "breakpoints": true
     }
   ]
 }

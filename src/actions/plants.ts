@@ -1,23 +1,16 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { addDays, format, parseISO } from "date-fns";
-import { eq, ilike, or, sql } from "drizzle-orm";
+import { and, eq, ilike, isNull, ne, or, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db";
-import { beds, plantCatalog, plants } from "@/db/schema";
+import { beds, gardens, plantCatalog, plants } from "@/db/schema";
 import { requireGardenAccess, requireUser } from "@/lib/guards";
-import { plantSchema } from "@/lib/validation";
+import { gardenIdForBed, gardenIdForPlant } from "@/lib/queries/ownership";
+import { addDaysIso, todayInAppZone } from "@/lib/dates";
+import { clampRect, isCellFree, type Rect } from "@/lib/plan-geometry";
+import { plantPositionSchema, plantSchema, plantStatusSchema } from "@/lib/validation";
 import { fail, ok, withAction, type ActionResult } from "@/lib/action-result";
-
-async function gardenIdForBed(bedId: string): Promise<string | null> {
-  const [row] = await db
-    .select({ gardenId: beds.gardenId })
-    .from(beds)
-    .where(eq(beds.id, bedId))
-    .limit(1);
-  return row?.gardenId ?? null;
-}
 
 export interface CatalogOption {
   id: string;
@@ -27,11 +20,16 @@ export interface CatalogOption {
   daysToMaturity: number | null;
   spacingCm: number | null;
   careNotes: string | null;
+  /** True for the gardener's own entry rather than the shared seeded catalog. */
+  isCustom: boolean;
 }
 
-/** Type-ahead for the plant picker. Catalog data is not garden-scoped. */
+/**
+ * Type-ahead for the plant picker. The shared seeded catalog is visible to
+ * everyone; entries a gardener added themselves are visible only to them.
+ */
 export async function searchCatalog(query: string, locale: string): Promise<CatalogOption[]> {
-  await requireUser();
+  const user = await requireUser();
 
   const name = locale === "en" ? plantCatalog.nameEn : plantCatalog.nameLt;
   const careNotes = locale === "en" ? plantCatalog.careNotesEn : plantCatalog.careNotesLt;
@@ -46,21 +44,77 @@ export async function searchCatalog(query: string, locale: string): Promise<Cata
       daysToMaturity: plantCatalog.daysToMaturity,
       spacingCm: plantCatalog.spacingCm,
       careNotes,
+      createdByUserId: plantCatalog.createdByUserId,
     })
     .from(plantCatalog)
     .where(
-      query.trim()
-        ? or(
-            ilike(plantCatalog.nameLt, term),
-            ilike(plantCatalog.nameEn, term),
-            ilike(plantCatalog.latinName, term),
-          )
-        : sql`true`,
+      and(
+        or(isNull(plantCatalog.createdByUserId), eq(plantCatalog.createdByUserId, user.id)),
+        query.trim()
+          ? or(
+              ilike(plantCatalog.nameLt, term),
+              ilike(plantCatalog.nameEn, term),
+              ilike(plantCatalog.latinName, term),
+            )
+          : sql`true`,
+      ),
     )
-    .orderBy(name)
+    // The gardener's own plants first — they are the ones the seed list missed.
+    .orderBy(sql`${plantCatalog.createdByUserId} is null`, name)
     .limit(query.trim() ? 20 : 60);
 
-  return rows;
+  return rows.map(({ createdByUserId, ...row }) => ({
+    ...row,
+    isCustom: createdByUserId !== null,
+  }));
+}
+
+/** Everything already occupying a cell on the plan: beds and placed plants. */
+async function occupiedCells(gardenId: string, exceptPlantId?: string): Promise<Rect[]> {
+  const [bedRows, plantRows] = await Promise.all([
+    db
+      .select({
+        gridX: beds.gridX,
+        gridY: beds.gridY,
+        gridW: beds.gridW,
+        gridH: beds.gridH,
+      })
+      .from(beds)
+      .where(eq(beds.gardenId, gardenId)),
+
+    db
+      .select({
+        id: plants.id,
+        gridX: plants.gridX,
+        gridY: plants.gridY,
+        gridW: plants.gridW,
+        gridH: plants.gridH,
+      })
+      .from(plants)
+      .where(
+        and(eq(plants.gardenId, gardenId), isNull(plants.bedId), ne(plants.status, "removed")),
+      ),
+  ]);
+
+  const placed = plantRows
+    .filter((row) => row.id !== exceptPlantId && row.gridX !== null && row.gridY !== null)
+    .map((row) => ({
+      gridX: row.gridX as number,
+      gridY: row.gridY as number,
+      gridW: row.gridW,
+      gridH: row.gridH,
+    }));
+
+  return [...bedRows, ...placed];
+}
+
+async function gridFor(gardenId: string): Promise<{ cols: number; rows: number } | null> {
+  const [garden] = await db
+    .select({ cols: gardens.gridCols, rows: gardens.gridRows })
+    .from(gardens)
+    .where(eq(gardens.id, gardenId))
+    .limit(1);
+  return garden ?? null;
 }
 
 export async function createPlant(input: unknown): Promise<ActionResult<{ id: string }>> {
@@ -71,9 +125,12 @@ export async function createPlant(input: unknown): Promise<ActionResult<{ id: st
     }
     const data = parsed.data;
 
-    const gardenId = await gardenIdForBed(data.bedId);
-    if (!gardenId) return fail("notFound");
-    await requireGardenAccess(gardenId, "editContent");
+    await requireGardenAccess(data.gardenId, "editContent");
+
+    // A bed from another garden would otherwise be a cross-garden write.
+    if (data.bedId && (await gardenIdForBed(data.bedId)) !== data.gardenId) {
+      return fail("notFound");
+    }
 
     // Estimate the harvest date from the catalog when the user did not set one.
     let expectedHarvestDate = data.expectedHarvestDate || null;
@@ -83,15 +140,27 @@ export async function createPlant(input: unknown): Promise<ActionResult<{ id: st
         .from(plantCatalog)
         .where(eq(plantCatalog.id, data.catalogId))
         .limit(1);
-      if (entry?.days) {
-        expectedHarvestDate = format(addDays(parseISO(data.plantedDate), entry.days), "yyyy-MM-dd");
-      }
+      if (entry?.days) expectedHarvestDate = addDaysIso(data.plantedDate, entry.days);
+    }
+
+    let placement: Rect | null = null;
+    if (!data.bedId) {
+      const garden = await gridFor(data.gardenId);
+      if (!garden) return fail("notFound");
+
+      placement = clampRect(
+        { gridX: data.gridX ?? 0, gridY: data.gridY ?? 0, gridW: data.gridW, gridH: data.gridH },
+        garden.cols,
+        garden.rows,
+      );
+      if (!isCellFree(placement, await occupiedCells(data.gardenId))) return fail("cellTaken");
     }
 
     const [created] = await db
       .insert(plants)
       .values({
-        bedId: data.bedId,
+        gardenId: data.gardenId,
+        bedId: data.bedId || null,
         catalogId: data.catalogId || null,
         freeformName: data.freeformName || null,
         variety: data.variety || null,
@@ -99,21 +168,50 @@ export async function createPlant(input: unknown): Promise<ActionResult<{ id: st
         plantedDate: data.plantedDate || null,
         expectedHarvestDate,
         status: data.status,
+        gridX: placement?.gridX ?? null,
+        gridY: placement?.gridY ?? null,
+        gridW: placement?.gridW ?? 1,
+        gridH: placement?.gridH ?? 1,
       })
       .returning({ id: plants.id });
 
     revalidatePath("/plan");
     revalidatePath("/");
-    revalidatePath(`/beds/${data.bedId}`);
+    if (data.bedId) revalidatePath(`/beds/${data.bedId}`);
     return ok({ id: created.id });
   });
 }
 
-export async function updatePlantStatus(
-  plantId: string,
-  status: "planned" | "planted" | "harvesting" | "removed",
-): Promise<ActionResult> {
+/** Persists a drag of a free-standing plant on the plan. */
+export async function updatePlantPosition(input: unknown): Promise<ActionResult> {
   return withAction(async () => {
+    const parsed = plantPositionSchema.safeParse(input);
+    if (!parsed.success) return fail("generic");
+    const { id, ...rect } = parsed.data;
+
+    const gardenId = await gardenIdForPlant(id);
+    if (!gardenId) return fail("notFound");
+    await requireGardenAccess(gardenId, "editContent");
+
+    const garden = await gridFor(gardenId);
+    if (!garden) return fail("notFound");
+
+    // Clamp server-side: the client is not the authority on the grid bounds.
+    const placement = clampRect(rect, garden.cols, garden.rows);
+    if (!isCellFree(placement, await occupiedCells(gardenId, id))) return fail("cellTaken");
+
+    await db.update(plants).set(placement).where(eq(plants.id, id));
+
+    revalidatePath("/plan");
+    return ok();
+  });
+}
+
+export async function updatePlantStatus(plantId: string, status: unknown): Promise<ActionResult> {
+  return withAction(async () => {
+    const parsedStatus = plantStatusSchema.safeParse(status);
+    if (!parsedStatus.success) return fail("generic");
+
     const [plant] = await db
       .select({ bedId: plants.bedId, plantedDate: plants.plantedDate })
       .from(plants)
@@ -121,25 +219,25 @@ export async function updatePlantStatus(
       .limit(1);
     if (!plant) return fail("notFound");
 
-    const gardenId = await gardenIdForBed(plant.bedId);
+    const gardenId = await gardenIdForPlant(plantId);
     if (!gardenId) return fail("notFound");
     await requireGardenAccess(gardenId, "editContent");
 
     await db
       .update(plants)
       .set({
-        status,
+        status: parsedStatus.data,
         // Record the planting date the first time it is marked as planted.
         plantedDate:
-          status === "planted" && !plant.plantedDate
-            ? format(new Date(), "yyyy-MM-dd")
+          parsedStatus.data === "planted" && !plant.plantedDate
+            ? todayInAppZone()
             : plant.plantedDate,
       })
       .where(eq(plants.id, plantId));
 
     revalidatePath("/plan");
     revalidatePath("/");
-    revalidatePath(`/beds/${plant.bedId}`);
+    if (plant.bedId) revalidatePath(`/beds/${plant.bedId}`);
     return ok();
   });
 }
@@ -147,21 +245,19 @@ export async function updatePlantStatus(
 export async function deletePlant(plantId: string): Promise<ActionResult> {
   return withAction(async () => {
     const [plant] = await db
-      .select({ bedId: plants.bedId })
+      .select({ bedId: plants.bedId, gardenId: plants.gardenId })
       .from(plants)
       .where(eq(plants.id, plantId))
       .limit(1);
     if (!plant) return fail("notFound");
 
-    const gardenId = await gardenIdForBed(plant.bedId);
-    if (!gardenId) return fail("notFound");
-    await requireGardenAccess(gardenId, "editContent");
+    await requireGardenAccess(plant.gardenId, "editContent");
 
     await db.delete(plants).where(eq(plants.id, plantId));
 
     revalidatePath("/plan");
     revalidatePath("/");
-    revalidatePath(`/beds/${plant.bedId}`);
+    if (plant.bedId) revalidatePath(`/beds/${plant.bedId}`);
     return ok();
   });
 }

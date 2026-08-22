@@ -24,6 +24,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { FAMILY_COLOR_VAR } from "@/lib/plant-families";
+import { cellsToArea } from "@/lib/plan-geometry";
 import type { BedWithPlants } from "@/lib/queries/beds";
 import { AddPlantDialog } from "@/components/plants/add-plant-dialog";
 
@@ -35,11 +36,13 @@ type PlantStatus = "planned" | "planted" | "harvesting" | "removed";
  */
 export function BedSheet({
   bed,
+  gardenId,
   canEdit,
   onOpenChange,
   onEdit,
 }: {
   bed: BedWithPlants | null;
+  gardenId: string;
   canEdit: boolean;
   onOpenChange: (open: boolean) => void;
   onEdit: (bed: BedWithPlants) => void;
@@ -92,7 +95,11 @@ export function BedSheet({
             </SheetTitle>
             <SheetDescription className="flex flex-wrap items-center gap-2">
               <span>
-                {bed.gridW} × {bed.gridH}
+                {t("dimensions", {
+                  w: bed.gridW,
+                  h: bed.gridH,
+                  area: cellsToArea(bed.gridW, bed.gridH),
+                })}
               </span>
               {sunLabel && (
                 <span className="flex items-center gap-1">
@@ -203,7 +210,12 @@ export function BedSheet({
         </SheetContent>
       </Sheet>
 
-      <AddPlantDialog bedId={bed.id} open={addPlantOpen} onOpenChange={setAddPlantOpen} />
+      <AddPlantDialog
+        gardenId={gardenId}
+        bedId={bed.id}
+        open={addPlantOpen}
+        onOpenChange={setAddPlantOpen}
+      />
     </>
   );
 }
