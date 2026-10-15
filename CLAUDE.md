@@ -57,6 +57,23 @@ journalling progress with photos. Requirements (in Lithuanian) live in
   `harvest` accent, dark mode from day one. Glassmorphism is limited to floating
   layers (top bar, bottom nav, sheets). Skeletons, not spinners.
 
+## Design canvas
+
+Mockups of the current screens live on a Claude design canvas:
+https://claude.ai/artifact/CX51soQP1W6M637m82FejU (Home, Plan, Tasks, Progress
+on desktop; Home and Sign in on mobile).
+
+- **Code is the source of truth.** The canvas is a sketchpad; never copy its
+  `.dc.html` files into the repo.
+- **Before any UI work, read the matching canvas screen** with the Artifact
+  tool (`read`, then the screen's file, e.g. `project/Plan.dc.html`) — the user
+  may have edited it. Don't wait to be asked.
+- **Implementing from the canvas:** reuse `src/components/ui/*` and the shell
+  components; colours, radii and fonts come only from the tokens in
+  `src/app/globals.css` (add a token there rather than a one-off value).
+- **After UI changes in code,** update the matching canvas screen so the two
+  stay in sync, and say which screens changed.
+
 ## Commands
 
 ```bash
